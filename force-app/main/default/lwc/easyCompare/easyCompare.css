@@ -1,0 +1,9 @@
+.border {
+    border: 1px solid red;
+}
+
+.buttons-block{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
