@@ -7,3 +7,7 @@
     justify-content: center;
     align-items: center;
 }
+
+.text-area-default-size {
+    --sds-c-textarea-sizing-min-height:275px;
+}
