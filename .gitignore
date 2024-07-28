@@ -45,11 +45,12 @@ $RECYCLE.BIN/
 **/venv/
 
 # Folders
-.vscode
+apex
+aura
 config
+.vscode
 manifest
 scripts
-aura
 contentassets
 flexipages
 layouts
