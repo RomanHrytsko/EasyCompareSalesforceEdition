@@ -3,13 +3,22 @@ import compareRecords from '@salesforce/apex/EasyCompareController.compareRecord
 
 export default class EasyCompare extends LightningElement {
     leftInput;
+    rightInput;
     @track leftColumnResult;
     @track rightColumnResult;
-    leftTextAreaValue = '';
-    rightTextAreaValue = '';
-    rightInput;
+    leftTextAreaValue = [];
+    rightTextAreaValue = [];
+    mainContainer = '';
+    columnsContainers = [];
     result;
     error;
+    stopScrolling = false;
+
+    constructor() {
+        super();
+        this.highlightFieldOnHover = this.highlightFieldOnHover.bind(this)
+        this.removeHighlightedStyle = this.removeHighlightedStyle.bind(this)
+    }
 
     startCompare() {
         this.leftInput = this.template.querySelector('.left-input');
@@ -18,29 +27,147 @@ export default class EasyCompare extends LightningElement {
         this.compareRecords();
     }
 
-    generateValuesForTheColumn(comparisonResult){
-       let textAreaValue = '';
-
+    generateValuesForTheColumn(comparisonResult, columnSide){
+        let column;
+        if(columnSide === 'left') {
+            column = this.template.querySelector('.left-column-container')
+        } else if (columnSide === 'right') {
+            column = this.template.querySelector('.right-column-container')
+        }
         try{
             for(const [key, value] of Object.entries(comparisonResult)) {
+                const div = document.createElement('div');
+                div.classList.add('block');
+                div.classList.add(key);
+                div.classList.add('slds-p-vertical_small');
                 let stringValue = JSON.stringify(value)
-                textAreaValue += `${key}: ${stringValue} \n`
+                div.innerHTML = `<b>${key}</b>: ${stringValue} \n`;
+                div.addEventListener('mouseover', this.highlightFieldOnHover);
+                div.addEventListener('mouseout', this.removeHighlightedStyle);
+                column.appendChild(div);
             }
         } catch(error) {
             console.log(error);
         }
+    }
 
-        return textAreaValue;
+    alignFieldsAndValues(){
+        for(const [key, value] of Object.entries(this.leftColumnResult)) {
+            if(!this.rightColumnResult.hasOwnProperty(key)) {
+                this.rightColumnResult[key] = 'empty';
+            }
+        }
+
+        for(const [key, value] of Object.entries(this.rightColumnResult)) {
+            if(!this.leftColumnResult.hasOwnProperty(key)) {
+                this.leftColumnResult[key] = 'empty';
+            }
+        }
+
+        this.leftColumnResult = this.sortResultsInAlphabeticalOrder(this.leftColumnResult)
+        this.rightColumnResult = this.sortResultsInAlphabeticalOrder(this.rightColumnResult)
+    }
+
+    sortResultsInAlphabeticalOrder(unordered) {
+        console.log();
+        const objectWithOrderedKeys = Object.keys(unordered).sort().reduce(
+            (obj, key) => { 
+              obj[key] = unordered[key]; 
+              return obj;
+            }, 
+            {}
+          );
+
+        return objectWithOrderedKeys;
+    }
+
+    highlightFieldOnHover(event) {
+        const targetElement = event.target;
+        if (targetElement && targetElement.classList) {
+            const fieldAPIName = '.' + this.extractFieldAPIName(targetElement.innerHTML);
+            const rowBlocks = this.template.querySelectorAll(fieldAPIName);
+            console.log(rowBlocks.length);
+            rowBlocks.forEach( row => {
+                row.style.backgroundColor  = '#ffcc00';
+            })
+        }
+    }
+    
+    removeHighlightedStyle(event) {
+        const targetElement = event.target;
+        if (targetElement && targetElement.classList) {
+            const fieldAPIName = '.' + this.extractFieldAPIName(targetElement.innerHTML);
+            const rowBlocks = this.template.querySelectorAll(fieldAPIName);
+            console.log(rowBlocks.length);
+            rowBlocks.forEach( row => {
+                row.style.backgroundColor  = '';
+            })
+        }
+    }
+
+    handleScroll(element) {
+        const scrolledEle = element.target;
+        if(!this.stopScrolling) {
+            this.stopScrolling = true;
+            this.columnsContainers.filter((item) => item !== scrolledEle).forEach((ele) => {
+                ele.removeEventListener('scroll', this.handleScroll);
+                this.syncScroll(scrolledEle, ele);
+                setTimeout(() => {
+                    ele.addEventListener('scroll', this.handleScroll);
+                    this.stopScrolling = false;
+                }, 0);
+            });
+        }
+    }
+
+    syncScroll(scrolledEle, ele) {
+        const scrolledPercent = scrolledEle.scrollTop / (scrolledEle.scrollHeight - scrolledEle.clientHeight);
+        const top = scrolledPercent * (ele.scrollHeight - ele.clientHeight);
+    
+        const scrolledWidthPercent = scrolledEle.scrollLeft / (scrolledEle.scrollWidth - scrolledEle.clientWidth);
+        const left = scrolledWidthPercent * (ele.scrollWidth - ele.clientWidth);
+    
+        ele.scrollTop = top;
+        ele.scrollLeft = left;
+    }
+
+    randomInteger(min, max){
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    clearDataInColumns() {
+        this.columnsContainers.forEach(column => {
+            while(column.lastElementChild) {
+                column.removeChild(column.lastElementChild);
+            }
+        })
+    }
+
+    extractFieldAPIName(inputString) {
+        const regex = /<b>(.*?)<\/b>/g;
+        const matches = [];
+        let match;
+        
+        while ((match = regex.exec(inputString)) !== null) {
+            matches.push(match[1]);
+        }
+        
+        return matches[0];
     }
 
     async compareRecords() {
         try {
+
             this.result = await compareRecords({ recordId1: this.leftInput.value, recordId2: this.rightInput.value });
             this.leftColumnResult = this.result[0][this.leftInput.value];
             this.rightColumnResult = this.result[1][this.rightInput.value];
 
-            this.leftTextAreaValue = this.generateValuesForTheColumn(this.leftColumnResult);
-            this.rightTextAreaValue = this.generateValuesForTheColumn(this.rightColumnResult);
+            this.columnsContainers = [...this.template.querySelectorAll('.scrollable')]
+            this.clearDataInColumns();
+            this.alignFieldsAndValues();
+
+            this.generateValuesForTheColumn(this.leftColumnResult, 'left');
+            this.generateValuesForTheColumn(this.rightColumnResult, 'right');
             
             this.error = undefined;
         } catch (error) {

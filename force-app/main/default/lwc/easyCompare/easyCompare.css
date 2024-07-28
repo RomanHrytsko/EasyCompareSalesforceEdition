@@ -11,3 +11,31 @@
 .text-area-default-size {
     --sds-c-textarea-sizing-min-height:275px;
 }
+
+.container {
+    border: 1px solid rgb(203 213 225);
+    display: flex;
+    max-height: 32rem;
+}
+.scrollable {
+    flex: 1;
+    overflow: auto;
+    max-height: 27rem;
+    gap: 0.5rem;
+}
+.scrollable:first-child {
+    border-right: 1px solid rgb(203 213 225);
+}
+.block {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    height: 3rem;
+}
+
+.highlited-row {
+    background-color: gold;
+}
+.block:not(:last-child) {
+    border-bottom: 1px solid rgb(203 213 225);
+}
