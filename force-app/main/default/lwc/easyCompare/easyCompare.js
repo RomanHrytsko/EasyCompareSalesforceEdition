@@ -1,5 +1,7 @@
 import { LightningElement, track } from 'lwc';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import compareRecords from '@salesforce/apex/EasyCompareController.compareRecords';
+import validateObjectAPINames from '@salesforce/apex/EasyCompareController.validateObjectAPINames';
 
 export default class EasyCompare extends LightningElement {
     leftInput;
@@ -11,7 +13,9 @@ export default class EasyCompare extends LightningElement {
     mainContainer = '';
     columnsContainers = [];
     result;
+    validationPassed = true;
     error;
+    errorMessage;
     stopScrolling = false;
 
     constructor() {
@@ -24,7 +28,9 @@ export default class EasyCompare extends LightningElement {
         this.leftInput = this.template.querySelector('.left-input');
         this.rightInput = this.template.querySelector('.right-input');
 
-        this.compareRecords();
+        if(this.runValidations()) {
+            this.compareRecords();
+        }
     }
 
     generateValuesForTheColumn(comparisonResult, columnSide){
@@ -131,10 +137,6 @@ export default class EasyCompare extends LightningElement {
         ele.scrollLeft = left;
     }
 
-    randomInteger(min, max){
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-
     clearDataInColumns() {
         this.columnsContainers.forEach(column => {
             while(column.lastElementChild) {
@@ -174,5 +176,60 @@ export default class EasyCompare extends LightningElement {
             this.error = error;
             this.result = undefined;
         }
+    }
+
+    showToast(title, message, variant) {
+        const event = new ShowToastEvent({
+            title: title,
+            message: message,
+            variant: variant
+            
+        });
+        this.dispatchEvent(event);
+    }
+
+    async validateObjectAPINames() {
+        try {
+
+            this.validationPassed = await validateObjectAPINames({ recordId1: this.leftInput.value, recordId2: this.rightInput.value });
+
+            if(!this.validationPassed) {
+                this.errorMessage = 'You compare different objects';
+            }
+
+            return this.validationPassed;
+
+        } catch (error) {
+            this.error = error;
+            this.errorMessage = 'Record Id does not exists or invalid'
+            this.validationPassed = false;
+        }
+    }
+
+    validateRecordIds() {
+        const recordIdPattern = /^[a-zA-Z0-9]{15}|[a-zA-Z0-9]{18}$/;
+        const isRecordId1Valid = recordIdPattern.test(this.leftInput.value);
+        const isRecordId2Valid = recordIdPattern.test(this.rightInput.value);
+
+        if(!isRecordId1Valid || !isRecordId2Valid) {
+            this.errorMessage = 'Record Id is not valid';
+            this.validationPassed = false;
+        }
+
+        return this.validationPassed;
+    }
+
+    
+    async runValidations() {
+        this.validationPassed = true;
+        if(this.validateRecordIds()) {
+            await this.validateObjectAPINames();
+        }
+
+        if(!this.validationPassed) {
+            this.showToast('Error', this.errorMessage, 'error');
+        }
+
+        return this.validationPassed;
     }
 }

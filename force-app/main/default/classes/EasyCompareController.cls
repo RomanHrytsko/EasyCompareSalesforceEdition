@@ -36,6 +36,18 @@ public with sharing class EasyCompareController {
         return new List<Map<Id, Map<String, Object>>>();
     }
 
+    @AuraEnabled
+    public static Boolean validateObjectAPINames(String recordId1, String recordId2) {
+        String record1APIName = getObjectApiNameFromId(recordId1);
+        String record2APIName = getObjectApiNameFromId(recordId2);
+
+        if(record1APIName != record2APIName) {
+            return false;
+        }
+
+        return true;
+    }
+
     private static String getObjectApiNameFromId(Id recordId) {
         return recordId.getSObjectType().getDescribe().getName();
     }
