@@ -9,27 +9,14 @@ public with sharing class EasyCompareController {
         Map<Id, Map<String, Object>> recordFieldsAndValues = new Map<Id, Map<String, Object>>();
 
         if(record1ApiName == record2ApiName) {
-            //can be 100, 200, 300 fields
+            //can be 100, 200, 300 or maximum fields allowed per object
             List<String> sobjectFieldsAPINames = getSObjectFieldsAPINames(getSObjectFieldNames(recordId1));
             List<String> fieldsToQuery = new List<String>();
-            for(Integer i = 1; i < sobjectFieldsAPINames.size(); i++) {
 
-                fieldsToQuery.add(sobjectFieldsAPINames[i  - 1]);
-
-                if((i + 1) >= sobjectFieldsAPINames.size()) {
-                    String queryFieldsPart = 'SELECT ' + String.join(fieldsToQuery, ', ') +  ' FROM ' + record1ApiName + ' WHERE Id IN :recordIds';
-                    List<SObject> fieldsToCompare = Database.query(queryFieldsPart);
-                    
-                    recordFieldsAndValues.putAll(combineStandardAndCustomFields(fieldsToCompare, fieldsToQuery));
-                }
-
-                if(Math.mod(i, 200) == 0) {
-                    String queryFieldsPart = 'SELECT ' + String.join(fieldsToQuery, ', ') +  ' FROM ' + record1ApiName + ' WHERE Id IN :recordIds';
-                    List<SObject> fieldsToCompare = Database.query(queryFieldsPart);
-                    
-                    recordFieldsAndValues.putAll(combineStandardAndCustomFields(fieldsToCompare, fieldsToQuery));
-                }
-            }
+            String query = 'SELECT ' + String.join(sobjectFieldsAPINames, ', ') +  ' FROM ' + record1ApiName + ' WHERE Id IN :recordIds';
+            List<SObject> recordsToCompare = Database.query(query);
+            
+            recordFieldsAndValues.putAll(combineFields(recordsToCompare, sobjectFieldsAPINames));
             return compareRecordFieldValuesAndFindDifferent(recordFieldsAndValues, sobjectFieldsAPINames, recordId1, recordId2);
         }
 
@@ -64,10 +51,10 @@ public with sharing class EasyCompareController {
         return apiNames;
     } 
 
-    private static Map<Id, Map<String, Object>> combineStandardAndCustomFields(List<SObject> listWithStandardFields, List<String> sobjectFieldsAPINames) {
+    private static Map<Id, Map<String, Object>> combineFields(List<SObject> sobjectRecords, List<String> sobjectFieldsAPINames) {
         Map<Id, Map<String, Object>> recordFieldsValuesByAPINameByRecordId = new Map<Id, Map<String, Object>>();
 
-        for(SObject record : listWithStandardFields) {
+        for(SObject record : sobjectRecords) {
             if(!recordFieldsValuesByAPINameByRecordId.containsKey(record.Id)) {
                 Map<String, Object> fieldValueByFieldAPIName = new Map<String, Object>();
                 recordFieldsValuesByAPINameByRecordId.put(record.Id, fieldValueByFieldAPIName);
