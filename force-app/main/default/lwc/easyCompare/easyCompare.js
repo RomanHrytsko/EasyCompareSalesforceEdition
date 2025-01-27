@@ -6,12 +6,11 @@ import Service from './easyCompareService'
 import CONSTANTS from './easyCompareConstants'
 
 export default class EasyCompare extends LightningElement {
-    leftInput;
-    rightInput;
     @track leftColumnResult;
     @track rightColumnResult;
+    leftInput;
+    rightInput;
     columnsContainers = [];
-    result;
     validationPassed = true;
     error;
     errorMessage;
@@ -21,8 +20,8 @@ export default class EasyCompare extends LightningElement {
     constructor() {
         super();
         this.service = new Service(this);
-        this.highlightFieldOnHover = this.highlightFieldOnHover.bind(this)
-        this.removeHighlightedStyle = this.removeHighlightedStyle.bind(this)
+        this.service.highlightFieldOnHover = this.service.highlightFieldOnHover.bind(this)
+        this.service.removeHighlightedStyle = this.service.removeHighlightedStyle.bind(this)
 
     }
 
@@ -37,22 +36,26 @@ export default class EasyCompare extends LightningElement {
 
     generateValuesForTheColumn(comparisonResult, columnSide){
         let column;
-        if(columnSide === 'left') {
+
+        if(columnSide === this.CONSTANTS.COLUMN_SIDES.LEFT) {
             column = this.template.querySelector('.left-column-container')
-        } else if (columnSide === 'right') {
+        } else if (columnSide === this.CONSTANTS.COLUMN_SIDES.RIGHT) {
             column = this.template.querySelector('.right-column-container')
         }
         try{
             for(const [key, value] of Object.entries(comparisonResult)) {
+                const classesToAdd = ['block', 'slds-p-left_small', 'slds-p-vertical_small', key];
                 const div = document.createElement('div');
-                div.classList.add('block');
-                div.classList.add('slds-p-left_small');
-                div.classList.add(key);
-                div.classList.add('slds-p-vertical_small');
+
+                div.classList.add(...classesToAdd);
+
                 let stringValue = JSON.stringify(value)
+
                 div.innerHTML = `<b>${key}</b>: ${stringValue} \n`;
-                div.addEventListener('mouseover', this.highlightFieldOnHover);
-                div.addEventListener('mouseout', this.removeHighlightedStyle);
+
+                div.addEventListener('mouseover', this.service.highlightFieldOnHover);
+                div.addEventListener('mouseout', this.service.removeHighlightedStyle);
+
                 column.appendChild(div);
             }
         } catch(error) {
@@ -62,14 +65,14 @@ export default class EasyCompare extends LightningElement {
     }
 
     alignFieldsAndValues(){
-        for(const [key, value] of Object.entries(this.leftColumnResult)) {
-            if(!this.rightColumnResult.hasOwnProperty(key)) {
+        for (const [key] of Object.entries(this.leftColumnResult)) {
+            if (!this.rightColumnResult.hasOwnProperty(key)) {
                 this.rightColumnResult[key] = this.CONSTANTS.EMPTY_VALUE;
             }
         }
 
-        for(const [key, value] of Object.entries(this.rightColumnResult)) {
-            if(!this.leftColumnResult.hasOwnProperty(key)) {
+        for (const [key] of Object.entries(this.rightColumnResult)) {
+            if (!this.leftColumnResult.hasOwnProperty(key)) {
                 this.leftColumnResult[key] = this.CONSTANTS.EMPTY_VALUE;
             }
         }
@@ -88,32 +91,13 @@ export default class EasyCompare extends LightningElement {
           );
     }
 
-    highlightFieldOnHover(event) {
-        const targetElement = event.target;
-        if (targetElement && targetElement.classList) {
-            const fieldAPIName = '.' + this.extractFieldAPIName(targetElement.innerHTML);
-            const rowBlocks = this.template.querySelectorAll(fieldAPIName);
-            rowBlocks.forEach( row => {
-                row.style.backgroundColor  = '#ffcc00';
-            })
-        }
-    }
-    
-    removeHighlightedStyle(event) {
-        const targetElement = event.target;
-        if (targetElement && targetElement.classList) {
-            const fieldAPIName = '.' + this.extractFieldAPIName(targetElement.innerHTML);
-            const rowBlocks = this.template.querySelectorAll(fieldAPIName);
-            rowBlocks.forEach( row => {
-                row.style.backgroundColor  = '';
-            })
-        }
-    }
+
 
     handleScroll(element) {
         const scrolledEle = element.target;
-        if(!this.stopScrolling) {
+        if (!this.stopScrolling) {
             this.stopScrolling = true;
+
             this.columnsContainers.filter((item) => item !== scrolledEle).forEach((ele) => {
                 ele.removeEventListener('scroll', this.handleScroll);
                 this.syncScroll(scrolledEle, ele);
@@ -138,7 +122,7 @@ export default class EasyCompare extends LightningElement {
 
     clearDataInColumns() {
         this.columnsContainers.forEach(column => {
-            while(column.lastElementChild) {
+            while (column.lastElementChild) {
                 column.removeChild(column.lastElementChild);
             }
         })
@@ -158,22 +142,23 @@ export default class EasyCompare extends LightningElement {
 
     async compareRecords() {
         try {
-
-            this.result = await compareRecords({ recordId1: this.leftInput.value, recordId2: this.rightInput.value });
-            this.leftColumnResult = this.result[0][this.leftInput.value];
-            this.rightColumnResult = this.result[1][this.rightInput.value];
+            const comparisonResult = await compareRecords(
+                { recordId1: this.leftInput.value, recordId2: this.rightInput.value }
+            );
+            this.leftColumnResult = comparisonResult[0][this.leftInput.value];
+            this.rightColumnResult = comparisonResult[1][this.rightInput.value];
 
             this.columnsContainers = [...this.template.querySelectorAll('.scrollable')]
             this.clearDataInColumns();
             this.alignFieldsAndValues();
 
-            this.generateValuesForTheColumn(this.leftColumnResult, 'left');
-            this.generateValuesForTheColumn(this.rightColumnResult, 'right');
+            this.generateValuesForTheColumn(this.leftColumnResult, this.CONSTANTS.COLUMN_SIDES.LEFT);
+            this.generateValuesForTheColumn(this.rightColumnResult, this.CONSTANTS.COLUMN_SIDES.RIGHT);
             
             this.error = undefined;
         } catch (error) {
+            //handle error
             this.error = error;
-            this.result = undefined;
         }
     }
 
@@ -190,7 +175,9 @@ export default class EasyCompare extends LightningElement {
     async validateObjectAPINames() {
         try {
 
-            this.validationPassed = await validateObjectAPINames({ recordId1: this.leftInput.value, recordId2: this.rightInput.value });
+            this.validationPassed = await validateObjectAPINames(
+                { recordId1: this.leftInput.value, recordId2: this.rightInput.value }
+            );
 
             if(!this.validationPassed) {
                 this.errorMessage = this.CONSTANTS.ERROR_MESSAGES.DIFFERENT_OBJECTS;
@@ -199,8 +186,9 @@ export default class EasyCompare extends LightningElement {
             return this.validationPassed;
 
         } catch (error) {
+            //handle error message
             this.error = error;
-            this.errorMessage = rightTextAreaValue
+            // this.errorMessage = rightTextAreaValue
             this.validationPassed = false;
         }
     }
@@ -210,7 +198,7 @@ export default class EasyCompare extends LightningElement {
         const isRecordId1Valid = recordIdPattern.test(this.leftInput.value);
         const isRecordId2Valid = recordIdPattern.test(this.rightInput.value);
 
-        if(!isRecordId1Valid || !isRecordId2Valid) {
+        if (!isRecordId1Valid || !isRecordId2Valid) {
             this.errorMessage = this.CONSTANTS.ERROR_MESSAGES.INVALID_RECORD_ID;
             this.validationPassed = false;
         }
@@ -221,11 +209,11 @@ export default class EasyCompare extends LightningElement {
     
     async runValidations() {
         this.validationPassed = true;
-        if(this.validateRecordIds()) {
+        if (this.validateRecordIds()) {
             await this.validateObjectAPINames();
         }
 
-        if(!this.validationPassed) {
+        if (!this.validationPassed) {
             this.showToast('Error', this.errorMessage, 'error');
         }
 

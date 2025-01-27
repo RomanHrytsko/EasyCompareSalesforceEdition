@@ -4,4 +4,8 @@ export default {
         DIFFERENT_OBJECTS: 'You compare different objects'
     },
     EMPTY_VALUE: 'empty',
+    COLUMN_SIDES: {
+        LEFT: 'left',
+        RIGHT: 'right'
+    }
 }
