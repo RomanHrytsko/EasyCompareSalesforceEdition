@@ -2,26 +2,28 @@ import { LightningElement, track } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import compareRecords from '@salesforce/apex/EasyCompareController.compareRecords';
 import validateObjectAPINames from '@salesforce/apex/EasyCompareController.validateObjectAPINames';
+import Service from './easyCompareService'
+import CONSTANTS from './easyCompareConstants'
 
 export default class EasyCompare extends LightningElement {
     leftInput;
     rightInput;
     @track leftColumnResult;
     @track rightColumnResult;
-    leftTextAreaValue = [];
-    rightTextAreaValue = [];
-    mainContainer = '';
     columnsContainers = [];
     result;
     validationPassed = true;
     error;
     errorMessage;
     stopScrolling = false;
+    CONSTANTS = CONSTANTS;
 
     constructor() {
         super();
+        this.service = new Service(this);
         this.highlightFieldOnHover = this.highlightFieldOnHover.bind(this)
         this.removeHighlightedStyle = this.removeHighlightedStyle.bind(this)
+
     }
 
     startCompare() {
@@ -44,6 +46,7 @@ export default class EasyCompare extends LightningElement {
             for(const [key, value] of Object.entries(comparisonResult)) {
                 const div = document.createElement('div');
                 div.classList.add('block');
+                div.classList.add('slds-p-left_small');
                 div.classList.add(key);
                 div.classList.add('slds-p-vertical_small');
                 let stringValue = JSON.stringify(value)
@@ -53,6 +56,7 @@ export default class EasyCompare extends LightningElement {
                 column.appendChild(div);
             }
         } catch(error) {
+            //add error handling
             console.log(error);
         }
     }
@@ -60,13 +64,13 @@ export default class EasyCompare extends LightningElement {
     alignFieldsAndValues(){
         for(const [key, value] of Object.entries(this.leftColumnResult)) {
             if(!this.rightColumnResult.hasOwnProperty(key)) {
-                this.rightColumnResult[key] = 'empty';
+                this.rightColumnResult[key] = this.CONSTANTS.EMPTY_VALUE;
             }
         }
 
         for(const [key, value] of Object.entries(this.rightColumnResult)) {
             if(!this.leftColumnResult.hasOwnProperty(key)) {
-                this.leftColumnResult[key] = 'empty';
+                this.leftColumnResult[key] = this.CONSTANTS.EMPTY_VALUE;
             }
         }
 
@@ -75,16 +79,13 @@ export default class EasyCompare extends LightningElement {
     }
 
     sortResultsInAlphabeticalOrder(unordered) {
-        console.log();
-        const objectWithOrderedKeys = Object.keys(unordered).sort().reduce(
+        return Object.keys(unordered).sort().reduce(
             (obj, key) => { 
               obj[key] = unordered[key]; 
               return obj;
             }, 
             {}
           );
-
-        return objectWithOrderedKeys;
     }
 
     highlightFieldOnHover(event) {
@@ -92,7 +93,6 @@ export default class EasyCompare extends LightningElement {
         if (targetElement && targetElement.classList) {
             const fieldAPIName = '.' + this.extractFieldAPIName(targetElement.innerHTML);
             const rowBlocks = this.template.querySelectorAll(fieldAPIName);
-            console.log(rowBlocks.length);
             rowBlocks.forEach( row => {
                 row.style.backgroundColor  = '#ffcc00';
             })
@@ -104,7 +104,6 @@ export default class EasyCompare extends LightningElement {
         if (targetElement && targetElement.classList) {
             const fieldAPIName = '.' + this.extractFieldAPIName(targetElement.innerHTML);
             const rowBlocks = this.template.querySelectorAll(fieldAPIName);
-            console.log(rowBlocks.length);
             rowBlocks.forEach( row => {
                 row.style.backgroundColor  = '';
             })
@@ -194,14 +193,14 @@ export default class EasyCompare extends LightningElement {
             this.validationPassed = await validateObjectAPINames({ recordId1: this.leftInput.value, recordId2: this.rightInput.value });
 
             if(!this.validationPassed) {
-                this.errorMessage = 'You compare different objects';
+                this.errorMessage = this.CONSTANTS.ERROR_MESSAGES.DIFFERENT_OBJECTS;
             }
 
             return this.validationPassed;
 
         } catch (error) {
             this.error = error;
-            this.errorMessage = 'Record Id does not exists or invalid'
+            this.errorMessage = rightTextAreaValue
             this.validationPassed = false;
         }
     }
@@ -212,7 +211,7 @@ export default class EasyCompare extends LightningElement {
         const isRecordId2Valid = recordIdPattern.test(this.rightInput.value);
 
         if(!isRecordId1Valid || !isRecordId2Valid) {
-            this.errorMessage = 'Record Id is not valid';
+            this.errorMessage = this.CONSTANTS.ERROR_MESSAGES.INVALID_RECORD_ID;
             this.validationPassed = false;
         }
 

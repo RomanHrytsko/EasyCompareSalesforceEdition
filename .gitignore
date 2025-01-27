@@ -66,3 +66,10 @@ jest.config.js
 sfdx-project.json
 package.json
 pre-commit
+
+# Added by Illuminated Cloud
+/IlluminatedCloud/
+target/
+/.illuminatedCloud/
+**/tsconfig*.json
+**/*.tsbuildinfo
