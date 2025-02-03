@@ -41,9 +41,9 @@ export default class EasyCompareService {
             this.generateValuesForTheColumn(this.cmp.rightColumnResult, this.cmp.CONSTANTS.COLUMN_SIDES.RIGHT);
 
             this.error = undefined;
+
         } catch (error) {
-            //handle error
-            this.error = error;
+            this.showToast(this.cmp.CONSTANTS.ERROR, error, 'error');
         }
     }
 
@@ -79,9 +79,9 @@ export default class EasyCompareService {
 
                 column.appendChild(div);
             }
+
         } catch(error) {
-            //add error handling
-            console.log(error);
+            this.showToast(this.cmp.CONSTANTS.ERROR, error, 'error');
         }
     }
 
@@ -192,7 +192,7 @@ export default class EasyCompareService {
             await this.validateObjectAPINames();
 
         } else if (!this.cmp.validationPassed) {
-            this.showToast('Error', this.cmp.errorMessage, 'error');
+            this.showToast(this.cmp.CONSTANTS.ERROR, this.cmp.errorMessage, 'error');
         }
 
         return this.cmp.validationPassed;
@@ -210,10 +210,10 @@ export default class EasyCompareService {
             if (!this.cmp.validationPassed) {
                 this.cmp.errorMessage = this.cmp.CONSTANTS.ERROR_MESSAGES.DIFFERENT_OBJECTS;
             }
+
         } catch (error) {
-            //handle error message
             this.cmp.error = error;
-            // this.errorMessage = rightTextAreaValue
+            this.showToast(this.cmp.CONSTANTS.ERROR, error, 'error');
             this.cmp.validationPassed = false;
         }
     }

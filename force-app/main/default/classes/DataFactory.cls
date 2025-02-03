@@ -6,14 +6,10 @@ public with sharing class DataFactory {
 
         acc.Name = accountName;
         
-        if(doInsert) {
+        if (doInsert) {
             insert acc;
         }
 
         return acc;
-    }
-
-    public static List<Account> getAllAccounts() {
-        return [SELECT Id FROM Account];
     }
 }

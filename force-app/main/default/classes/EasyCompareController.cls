@@ -1,6 +1,5 @@
 public with sharing class EasyCompareController {
-    public EasyCompareController() {}
-    
+
     @AuraEnabled
     public static List<Map<Id, Map<String, Object>>> compareRecords(String recordId1, String recordId2) {
         List<String> recordIds = new List<String>{recordId1, recordId2};
@@ -11,13 +10,19 @@ public with sharing class EasyCompareController {
         if(record1ApiName == record2ApiName) {
             //can be 100, 200, 300 or maximum fields allowed per object
             List<String> sobjectFieldsAPINames = getSObjectFieldsAPINames(getSObjectFieldNames(recordId1));
-            List<String> fieldsToQuery = new List<String>();
 
-            String query = 'SELECT ' + String.join(sobjectFieldsAPINames, ', ') +  ' FROM ' + record1ApiName + ' WHERE Id IN :recordIds';
+            String query = 'SELECT ' + String.join(sobjectFieldsAPINames, ', ') +  ' FROM ' + record1ApiName +
+                    + ' WHERE Id IN :recordIds';
             List<SObject> recordsToCompare = Database.query(query);
             
             recordFieldsAndValues.putAll(combineFields(recordsToCompare, sobjectFieldsAPINames));
-            return compareRecordFieldValuesAndFindDifferent(recordFieldsAndValues, sobjectFieldsAPINames, recordId1, recordId2);
+
+            return compareRecordFieldValuesAndFindDifferent(
+                    recordFieldsAndValues,
+                    sobjectFieldsAPINames,
+                    recordId1,
+                    recordId2
+            );
         }
 
         return new List<Map<Id, Map<String, Object>>>();
@@ -36,11 +41,11 @@ public with sharing class EasyCompareController {
     }
 
     private static String getObjectApiNameFromId(Id recordId) {
-        return recordId.getSObjectType().getDescribe().getName();
+        return recordId.getSobjectType().getDescribe().getName();
     }
 
     private static Map<String,Schema.SObjectField> getSObjectFieldNames(Id recordId) {
-        return recordId.getSObjectType().getDescribe().fields.getMap();
+        return recordId.getSobjectType().getDescribe().fields.getMap();
     } 
 
     private static List<String> getSObjectFieldsAPINames(Map<String,Schema.SObjectField> fieldsSchemaMap) {
@@ -51,20 +56,30 @@ public with sharing class EasyCompareController {
         return apiNames;
     } 
 
-    private static Map<Id, Map<String, Object>> combineFields(List<SObject> sobjectRecords, List<String> sobjectFieldsAPINames) {
+    private static Map<Id, Map<String, Object>> combineFields(
+            List<SObject> sobjectRecords,
+            List<String> sobjectFieldsAPINames
+    ) {
         Map<Id, Map<String, Object>> recordFieldsValuesByAPINameByRecordId = new Map<Id, Map<String, Object>>();
 
-        for(SObject record : sobjectRecords) {
-            if(!recordFieldsValuesByAPINameByRecordId.containsKey(record.Id)) {
+        for (SObject record : sobjectRecords) {
+            if (!recordFieldsValuesByAPINameByRecordId.containsKey(record.Id)) {
                 Map<String, Object> fieldValueByFieldAPIName = new Map<String, Object>();
                 recordFieldsValuesByAPINameByRecordId.put(record.Id, fieldValueByFieldAPIName);
             } 
 
             Map<String, Object> fieldsToValue = record.getPopulatedFieldsAsMap();
 
-            for(String fieldAPIName : sobjectFieldsAPINames) {
-                if(fieldsToValue.containsKey(fieldAPIName) && !recordFieldsValuesByAPINameByRecordId.get(record.Id).containsKey(fieldAPIName)) {
-                    recordFieldsValuesByAPINameByRecordId.get(record.Id).put(fieldAPIName, (Object)fieldsToValue.get(fieldAPIName));
+            for (String fieldAPIName : sobjectFieldsAPINames) {
+
+                if (
+                        fieldsToValue.containsKey(fieldAPIName) &&
+                        !recordFieldsValuesByAPINameByRecordId.get(record.Id).containsKey(fieldAPIName)
+                ) {
+                    recordFieldsValuesByAPINameByRecordId.get(record.Id).put(
+                            fieldAPIName,
+                            fieldsToValue.get(fieldAPIName)
+                    );
                 }
             }
         }
@@ -72,14 +87,26 @@ public with sharing class EasyCompareController {
         return recordFieldsValuesByAPINameByRecordId;
     }
 
-    private static List<Map<Id, Map<String, Object>>> compareRecordFieldValuesAndFindDifferent(Map<Id, Map<String, Object>> recordFieldsAndValues, List<String> sobjectFieldsAPINames, String recordId1, String recordId2) {
-        Map<Id, Map<String, Object>> leftRecordWithDifferentValues = new Map<Id, Map<String, Object>>{recordId1 => new Map<String, Object>()};
-        Map<Id, Map<String, Object>> rightRecordWithDifferentValues = new Map<Id, Map<String, Object>>{recordId2 => new Map<String, Object>()};
+    private static List<Map<Id, Map<String, Object>>> compareRecordFieldValuesAndFindDifferent(
+            Map<Id, Map<String, Object>> recordFieldsAndValues,
+            List<String> sobjectFieldsAPINames,
+            String recordId1,
+            String recordId2
+    ) {
+        Map<Id, Map<String, Object>> leftRecordWithDifferentValues = new Map<Id, Map<String, Object>>{
+                recordId1 => new Map<String, Object>()
+        };
+        Map<Id, Map<String, Object>> rightRecordWithDifferentValues = new Map<Id, Map<String, Object>>{
+                recordId2 => new Map<String, Object>()
+        };
         
         for(String fieldApiName : sobjectFieldsAPINames) {
-            if(recordFieldsAndValues.get(recordId1).get(fieldApiName) != recordFieldsAndValues.get(recordId2).get(fieldApiName)) {
-                leftRecordWithDifferentValues.get(recordId1).put(fieldApiName, recordFieldsAndValues.get(recordId1).get(fieldApiName));
-                rightRecordWithDifferentValues.get(recordId2).put(fieldApiName, recordFieldsAndValues.get(recordId2).get(fieldApiName));
+            Object record_1_FieldValue = recordFieldsAndValues.get(recordId1).get(fieldApiName);
+            Object record_2_FieldValue = recordFieldsAndValues.get(recordId2).get(fieldApiName);
+
+            if(record_1_FieldValue != record_2_FieldValue) {
+                leftRecordWithDifferentValues.get(recordId1).put(fieldApiName, record_1_FieldValue);
+                rightRecordWithDifferentValues.get(recordId2).put(fieldApiName, record_2_FieldValue);
             }
         }
 
